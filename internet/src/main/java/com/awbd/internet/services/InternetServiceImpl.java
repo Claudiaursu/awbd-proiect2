@@ -17,9 +17,9 @@ public class InternetServiceImpl implements InternetService {
     InternetRepository internetRepository;
 
     @Override
-    public Internet findByProvider(String provider) {
-        Internet internet = internetRepository.findByProvider(provider);
-        return internet;
+    public List<Internet> findByProvider(String provider) {
+        List<Internet> internetList = internetRepository.findByProvider(provider);
+        return internetList;
     }
 
     @Override
@@ -37,19 +37,19 @@ public class InternetServiceImpl implements InternetService {
 
     @Override
     public Internet delete(Long id){
-        Optional<Internet> subscriptionOptional = internetRepository.findById(id);
-        if (! subscriptionOptional.isPresent())
-            throw new InternetNotFound("Subscription " + id + " not found!");
-        internetRepository.delete(subscriptionOptional.get());
-        return subscriptionOptional.get();
+        Optional<Internet> internetOptional = internetRepository.findById(id);
+        if (! internetOptional.isPresent())
+            throw new InternetNotFound("Internet " + id + " not found!");
+        internetRepository.delete(internetOptional.get());
+        return internetOptional.get();
     }
 
     @Override
     public Internet findById(Long id) {
-        Optional<Internet> subscriptionOptional = internetRepository.findById(id);
-        if (! subscriptionOptional.isPresent())
-            throw new InternetNotFound("Subscription " + id + " not found!");
-        return subscriptionOptional.get();
+        Optional<Internet> internetOptional = internetRepository.findById(id);
+        if (! internetOptional.isPresent())
+            throw new InternetNotFound("Internet " + id + " not found!");
+        return internetOptional.get();
     }
 
 

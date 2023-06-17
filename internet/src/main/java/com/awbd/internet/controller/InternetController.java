@@ -42,14 +42,19 @@ public class InternetController {
     InternetService internetService;
 
 
+    @Operation(summary = "get all records for internet")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "list of internets",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Internet.class))})})
     @GetMapping(value = "/internet/list", produces = {"application/hal+json"})
     public CollectionModel<Internet> findAll( ) {
 
         List<Internet> internetList = internetService.findAll();
         for (final Internet internet : internetList) {
-            Link selfLink = linkTo(methodOn(InternetController.class).getSubscription(internet.getId())).withSelfRel();
+            Link selfLink = linkTo(methodOn(InternetController.class).getInternet(internet.getId())).withSelfRel();
             internet.add(selfLink);
-            Link deleteLink = linkTo(methodOn(InternetController.class).deleteSubscription(internet.getId())).withRel("deleteSubscription");
+            Link deleteLink = linkTo(methodOn(InternetController.class).deleteInternet(internet.getId())).withRel("deleteInternet");
             internet.add(deleteLink);
         }
         Link link = linkTo(methodOn(InternetController.class).findAll()).withSelfRel();
@@ -57,69 +62,86 @@ public class InternetController {
         return result;
     }
 
-
+    @Operation(summary = "find internet by provider")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "internet found",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Internet.class))}),
+            @ApiResponse(responseCode = "404", description = "Internet not found",
+                    content = @Content)})
     @GetMapping("/internet/provider/{provider}")
-    Internet findByProvider(
-            @PathVariable String provider){
-        Internet internet = internetService.findByProvider(provider);
+    public CollectionModel<Internet> findByProvider(@PathVariable String provider){
+        List<Internet> internetList = internetService.findByProvider(provider);
 
-
-        Link selfLink = linkTo(methodOn(InternetController.class).getSubscription(internet.getId())).withSelfRel();
-
-        internet.add(selfLink);
-
-        Billing billing = billingServiceProxy.findBilling();
-        log.info(billing.isDebt() == true? "Debt" : "No debt");
-        if(billing.isDebt() == true)
-            internet.setPrice(internet.getPrice() + billing.getAmount());
-        return internet;
+        for (final Internet internet : internetList) {
+            Link selfLink = linkTo(methodOn(InternetController.class).getInternet(internet.getId())).withSelfRel();
+            internet.add(selfLink);
+            Link deleteLink = linkTo(methodOn(InternetController.class).deleteInternet(internet.getId())).withRel("deleteInternet");
+            internet.add(deleteLink);
+        }
+        Link link = linkTo(methodOn(InternetController.class).findByProvider(provider)).withSelfRel();
+        CollectionModel<Internet> result = CollectionModel.of(internetList, link);
+        return result;
     }
 
-
+    @Operation(summary = "create new internet")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "internet created",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Internet.class))}),
+            @ApiResponse(responseCode = "500", description = "Internal server error",
+                    content = @Content)})
     @PostMapping("/internet")
     public ResponseEntity<Internet> save(@Valid @RequestBody Internet internet){
         Internet savedInternet = internetService.save(internet);
         URI locationUri =ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{subscriptionId}").buildAndExpand(savedInternet.getId())
+                .path("/{internetId}").buildAndExpand(savedInternet.getId())
                 .toUri();
 
         return ResponseEntity.created(locationUri).body(savedInternet);
     }
 
 
-    @Operation(summary = "delete subscription by id")
+    @Operation(summary = "delete internet by id")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "subscription deleted",
+            @ApiResponse(responseCode = "200", description = "internet deleted",
                     content = {@Content(mediaType = "application/json",
                             schema = @Schema(implementation = Internet.class))}),
             @ApiResponse(responseCode = "400", description = "Invalid id",
                     content = @Content),
-            @ApiResponse(responseCode = "404", description = "Subscription not found",
+            @ApiResponse(responseCode = "404", description = "Internet not found",
                     content = @Content)})
-    @DeleteMapping("/internet/{subscriptionId}")
-    public Internet deleteSubscription(@PathVariable Long subscriptionId) {
+    @DeleteMapping("/internet/delete/{internetId}")
+    public Internet deleteInternet(@PathVariable Long internetId) {
 
-        Internet internet = internetService.delete(subscriptionId);
+        Internet internet = internetService.delete(internetId);
         return internet;
     }
 
-    @GetMapping("/internet/{subscriptionId}")
-    @CircuitBreaker(name="billingById", fallbackMethod = "getSubscriptionFallback")
-    public Internet getSubscription(@PathVariable Long subscriptionId) {
-        logger.info("subscription by id request start");
-        Internet internet = internetService.findById(subscriptionId);
+    @Operation(summary = "get internet by id")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "internet found",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Internet.class))}),
+            @ApiResponse(responseCode = "404", description = "Internet not found",
+                    content = @Content)})
+    @GetMapping("/internet/{internetId}")
+    @CircuitBreaker(name="billingById", fallbackMethod = "getInternetFallback")
+    public Internet getInternet(@PathVariable Long internetId) {
+        logger.info("Internet by id request start");
+        Internet internet = internetService.findById(internetId);
         Billing billing = billingServiceProxy.findBilling();
         logger.info(billing.isDebt() == true? "Debt" : "No debt");
         if(billing.isDebt() == true)
             internet.setPrice(internet.getPrice() + billing.getAmount());
-        logger.info("subscription by id request end");
+        logger.info("Internet by id request end");
         return internet;
 
     }
 
-    private Internet getSubscriptionFallback(Long subscriptionId, Throwable throwable) {
+    private Internet getInternetFallback(Long internetId, Throwable throwable) {
 
-        Internet internet = internetService.findById(subscriptionId);
+        Internet internet = internetService.findById(internetId);
         return internet;
     }
 
